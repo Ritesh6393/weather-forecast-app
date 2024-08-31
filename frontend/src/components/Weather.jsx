@@ -8,6 +8,7 @@ const Weather = () => {
   const [weather, setWeather] = useState(null);
   const [unit, setUnit] = useState('metric'); // 'metric' for Celsius, 'imperial' for Fahrenheit
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(''); // State for error messages
 
   useEffect(() => {
     if (weather) {
@@ -17,6 +18,7 @@ const Weather = () => {
 
   const fetchWeather = async () => {
     setLoading(true);
+    setError(''); // Reset error message
     try {
       const response = await axios.get(`http://localhost:3000/api/weather`, {
         params: { city },
@@ -24,17 +26,26 @@ const Weather = () => {
 
       const weatherData = response.data;
 
-      // Store the original temperature and convert based on the unit
-      weatherData.temperatureCelsius = parseFloat(weatherData.temperature);
-      weatherData.feelsLikeInCelsius=parseFloat(weatherData.feels_like);
-      if (unit === 'imperial') {
-        weatherData.temperature = convertToFahrenheit(weatherData.temperatureCelsius);
-        weatherData.feels_like=convertToFahrenheit(weatherData.feelsLikeInCelsius);
-      }
+      if (weatherData.error) {
+        // Set error state if the backend returns an error
+        setError(weatherData.error);
+        setWeather(null); // Clear weather data if there's an error
+      } else {
+        // Store the original temperature and convert based on the unit
+        weatherData.temperatureCelsius = parseFloat(weatherData.temperature);
+        weatherData.feelsLikeInCelsius = parseFloat(weatherData.feels_like);
+        if (unit === 'imperial') {
+          weatherData.temperature = convertToFahrenheit(weatherData.temperatureCelsius);
+          weatherData.feels_like = convertToFahrenheit(weatherData.feelsLikeInCelsius);
+        }
 
-      setWeather(weatherData);
+        setWeather(weatherData);
+      }
     } catch (error) {
+      // Handle unexpected errors
       console.error('Error fetching weather data:', error);
+      setError('Unable to fetch weather data');
+      setWeather(null);
     } finally {
       setLoading(false);
     }
@@ -72,10 +83,10 @@ const Weather = () => {
 
   const getBackgroundColor = (temperature) => {
     let temp = parseFloat(temperature);
-    if(unit==='imperial'){
-        temp=((temperature - 32) * 5/9).toFixed(2);
+    if (unit === 'imperial') {
+      temp = ((temperature - 32) * 5/9).toFixed(2);
     }
-    
+
     if (temp < 0) return '#00f'; 
     if (temp < 10) return '#0ff'; 
     if (temp < 20) return '#ffcc99'; 
@@ -107,7 +118,13 @@ const Weather = () => {
         </div>
       )}
 
-      {weather && (
+      {error && (
+        <div className="mt-4 bg-red-100 p-6 rounded-lg shadow-lg w-full max-w-md">
+          <p className="text-lg mb-2 text-red-600">{error}</p>
+        </div>
+      )}
+
+      {weather && !error && (
         <div className="mt-4 bg-blue-50 p-6 rounded-lg shadow-lg w-full max-w-md transition-transform transform hover:scale-105 hover:shadow-xl duration-300 ease-in-out">
           <h2 className="text-2xl font-bold mb-2 text-gray-800">{weather.city}</h2>
           <p className="text-lg mb-2 text-gray-700">
